@@ -22,6 +22,20 @@
       background: linear-gradient(to bottom, #475569, #0f172a);
       min-height: 100vh;
       color: white;
+		<script>
+// ===== REGISTRO DEL SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(registration => {
+                console.log('✅ Service Worker registrado:', registration);
+            })
+            .catch(error => {
+                console.error('❌ Error al registrar Service Worker:', error);
+            });
+    });
+}
+</script>
     }
     
     .container {

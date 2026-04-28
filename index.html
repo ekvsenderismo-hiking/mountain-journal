@@ -692,8 +692,11 @@ No agregues explicaciones, etiquetas ni texto adicional.`;
             contenido: entry.content || '',
             gratitudes: entry.gratitude ? entry.gratitude.join('; ') : ''
           };
-          await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-        }
+          await fetch(SCRIPT_URL, {
+  method: 'POST',
+  body: JSON.stringify(data),
+  mode: 'no-cors'
+});
         
         // Generar frase destacada con IA
         let fraseDestacada = '';

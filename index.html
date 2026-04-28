@@ -669,60 +669,72 @@ No agregues explicaciones, etiquetas ni texto adicional.`;
     }
 
     async function sendToGoogleSheets() {
-      if (entries.length === 0) { sendMessage = 'error:No hay entradas para enviar'; render(); return; }
-      
-      // Pedir firma opcional antes de enviar
-      const firma = prompt('Firmá tu diario (opcional)\n\nPodés usar tu nombre, apodo o dejarlo vacío:\n\nEjemplos: Walter, Lau, "el que casi abandona" 😊');
-      firmaExcursionista = firma ? firma.trim() : '';
-      
-      isSending = true; sendMessage = ''; render();
-      
+  if (entries.length === 0) { 
+    sendMessage = 'error:No hay entradas para enviar'; 
+    render(); 
+    return; 
+  }
+  
+  const firma = prompt('Firmá tu diario (opcional)');
+  firmaExcursionista = firma ? firma.trim() : '';
+  
+  isSending = true; 
+  sendMessage = ''; 
+  render();
+  
+  try {
+
+    // 🟢 Enviar entradas
+    for (const entry of entries) {
+      const data = {
+        nombreViajero: tripInfo.nombreViajero, 
+        lugarViaje: tripInfo.lugarViaje, 
+        fechaDesde: tripInfo.fechaDesde,
+        fechaHasta: tripInfo.fechaHasta, 
+        nombreGuia: tripInfo.nombreGuia,
+        firmaExcursionista: firmaExcursionista,
+        mood: entry.mood ? entry.mood.emoji + ' ' + entry.mood.label : '',
+        tipoEntrada: entry.type, 
+        prompt: entry.prompt || '', 
+        contenido: entry.content || '',
+        gratitudes: entry.gratitude ? entry.gratitude.join('; ') : ''
+      };
+
       try {
-        for (const entry of entries) {
-          const data = {
-            nombreViajero: tripInfo.nombreViajero, 
-            lugarViaje: tripInfo.lugarViaje, 
-            fechaDesde: tripInfo.fechaDesde,
-            fechaHasta: tripInfo.fechaHasta, 
-            nombreGuia: tripInfo.nombreGuia,
-            firmaExcursionista: firmaExcursionista, // NUEVO
-            mood: entry.mood ? entry.mood.emoji + ' ' + entry.mood.label : '',
-            tipoEntrada: entry.type, 
-            prompt: entry.prompt || '', 
-            contenido: entry.content || '',
-            gratitudes: entry.gratitude ? entry.gratitude.join('; ') : ''
-          };
-         try {
-  await fetch(SCRIPT_URL, {  
-    method: 'POST',  
-    body: JSON.stringify(data),  
-    mode: 'no-cors'  
-  });
-
-  sendMessage = "✅ Diario enviado correctamente";
-
-} catch (e) {
-  sendMessage = "❌ Error al enviar";
-}
-        // Generar frase destacada con IA
-        let fraseDestacada = '';
-        try {
-          fraseDestacada = await generateInspirationalQuote();
-        } catch (error) {
-          console.log('No se pudo generar frase destacada:', error);
-        }
-        
-        try {
-          const fileName = await generateDiaryPDF(fraseDestacada);
-          sendMessage = `success:¡Datos enviados y diario "${fileName}" descargado!`;
-        } catch (pdfError) {
-          sendMessage = 'success:¡Datos enviados! (PDF no disponible en esta vista)';
-        }
-      } catch (error) { 
-        sendMessage = 'error:Error al enviar. Verifica tu conexión.'; 
+        await fetch(SCRIPT_URL, {  
+          method: 'POST',  
+          body: JSON.stringify(data),  
+          mode: 'no-cors'  
+        });
+      } catch (e) {
+        console.log("Error enviando entrada:", e);
       }
-      isSending = false; render();
     }
+
+    // 🟡 Frase IA
+    let fraseDestacada = '';
+    try {
+      fraseDestacada = await generateInspirationalQuote();
+    } catch (error) {
+      console.log('No se pudo generar frase:', error);
+    }
+
+    // 🟣 PDF
+    try {
+      const fileName = await generateDiaryPDF(fraseDestacada);
+      sendMessage = `success:¡Datos enviados y diario "${fileName}" descargado!`;
+    } catch (pdfError) {
+      sendMessage = 'success:¡Datos enviados! (PDF no disponible)';
+    }
+
+  } catch (error) { 
+    console.error(error);
+    sendMessage = 'error:Error al enviar. Verifica tu conexión.'; 
+  }
+
+  isSending = false; 
+  render();
+}
 
     function formatDate(dateString) {
       const date = new Date(dateString);

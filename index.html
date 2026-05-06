@@ -1,3 +1,4 @@
+@@ -0,0 +1,768 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -115,7 +116,7 @@
   <div id="app"></div>
 
   <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9X6wHjqUhQk4sX5SwEBFjsHt2b4UeEU3GwW2V_pSTzOh46H9u3hmKxWq6s3s-Cu6PGA/exec';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxkJ0rmBz2wOKBlw2GY8A24m_M875hlr24QqQ808KCrtFQgxm3YldN8NIk6TtXWivne5w/exec';
     
     const prompts = ["¿Qué me enseñó la montaña hoy?","¿Qué sensaciones experimenté en el camino?","¿Cuál fue el momento más memorable del día?","¿Qué desafío superé hoy?","¿Cómo me siento al estar lejos de la ciudad?","¿Qué sonidos, olores o vistas me impactaron?","¿Qué aprendí sobre mí mismo/a hoy?","¿Por qué estoy agradecido/a en este momento?","¿Qué dejé ir hoy en la montaña?","¿Cómo me ha transformado este viaje hasta ahora?"];
     const moods = [{ emoji: '😊', label: 'Feliz', color: '#fbbf24' },{ emoji: '😌', label: 'Tranquilo', color: '#60a5fa' },{ emoji: '💪', label: 'Fuerte', color: '#10b981' },{ emoji: '🤔', label: 'Reflexivo', color: '#a855f7' },{ emoji: '😴', label: 'Cansado', color: '#6b7280' }];
@@ -669,79 +670,51 @@ No agregues explicaciones, etiquetas ni texto adicional.`;
     }
 
     async function sendToGoogleSheets() {
-  if (entries.length === 0) { 
-    sendMessage = 'error:No hay entradas para enviar'; 
-    render(); 
-    return; 
-  }
-  
-  const firma = prompt('Firmá tu diario (opcional)');
-  firmaExcursionista = firma ? firma.trim() : '';
-  
-  isSending = true; 
-  sendMessage = ''; 
-  render();
-  
-  try {
-
-    // 🟢 Enviar entradas
-    for (const entry of entries) {
-      const data = {
-        nombreViajero: tripInfo.nombreViajero, 
-        lugarViaje: tripInfo.lugarViaje, 
-        fechaDesde: tripInfo.fechaDesde,
-        fechaHasta: tripInfo.fechaHasta, 
-        nombreGuia: tripInfo.nombreGuia,
-        firmaExcursionista: firmaExcursionista,
-        mood: entry.mood ? entry.mood.emoji + ' ' + entry.mood.label : '',
-        tipoEntrada: entry.type, 
-        prompt: entry.prompt || '', 
-        contenido: entry.content || '',
-        gratitudes: entry.gratitude ? entry.gratitude.join('; ') : ''
-      };
-
-      const response = await fetch(SCRIPT_URL, {  
-  method: 'POST',  
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify(data)
-});
-
-const result = await response.json();
-
-if (result.status !== "ok") {
-  throw new Error("Error en servidor");
-}
-      } catch (e) {
-        console.log("Error enviando entrada:", e);
+      if (entries.length === 0) { sendMessage = 'error:No hay entradas para enviar'; render(); return; }
+      
+      // Pedir firma opcional antes de enviar
+      const firma = prompt('Firmá tu diario (opcional)\n\nPodés usar tu nombre, apodo o dejarlo vacío:\n\nEjemplos: Walter, Lau, "el que casi abandona" 😊');
+      firmaExcursionista = firma ? firma.trim() : '';
+      
+      isSending = true; sendMessage = ''; render();
+      
+      try {
+        for (const entry of entries) {
+          const data = {
+            nombreViajero: tripInfo.nombreViajero, 
+            lugarViaje: tripInfo.lugarViaje, 
+            fechaDesde: tripInfo.fechaDesde,
+            fechaHasta: tripInfo.fechaHasta, 
+            nombreGuia: tripInfo.nombreGuia,
+            firmaExcursionista: firmaExcursionista, // NUEVO
+            mood: entry.mood ? entry.mood.emoji + ' ' + entry.mood.label : '',
+            tipoEntrada: entry.type, 
+            prompt: entry.prompt || '', 
+            contenido: entry.content || '',
+            gratitudes: entry.gratitude ? entry.gratitude.join('; ') : ''
+          };
+          await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        }
+        
+        // Generar frase destacada con IA
+        let fraseDestacada = '';
+        try {
+          fraseDestacada = await generateInspirationalQuote();
+        } catch (error) {
+          console.log('No se pudo generar frase destacada:', error);
+        }
+        
+        try {
+          const fileName = await generateDiaryPDF(fraseDestacada);
+          sendMessage = `success:¡Datos enviados y diario "${fileName}" descargado!`;
+        } catch (pdfError) {
+          sendMessage = 'success:¡Datos enviados! (PDF no disponible en esta vista)';
+        }
+      } catch (error) { 
+        sendMessage = 'error:Error al enviar. Verifica tu conexión.'; 
       }
+      isSending = false; render();
     }
-
-    // 🟡 Frase IA
-    let fraseDestacada = '';
-    try {
-      fraseDestacada = '';
-    } catch (error) {
-      console.log('No se pudo generar frase:', error);
-    }
-
-    // 🟣 PDF
-    try {
-      const fileName = await generateDiaryPDF(fraseDestacada);
-      sendMessage = `success:¡Datos enviados y diario "${fileName}" descargado!`;
-    } catch (pdfError) {
-      sendMessage = 'success:¡Datos enviados! (PDF no disponible)';
-    }
-
-  } catch (error) { 
-    console.error(error);
-    sendMessage = 'error:Error al enviar. Verifica tu conexión.'; 
-  }
-
-  isSending = false; 
-  render();
-}
 
     function formatDate(dateString) {
       const date = new Date(dateString);
